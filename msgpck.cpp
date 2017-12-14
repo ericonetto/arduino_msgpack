@@ -335,6 +335,35 @@ bool msgpack_read_float(Stream * s, float *f) {
   return false;
 }
 
+bool msgpack_read_double(Stream * s, double *d) {
+  byte db;
+  uint8_t read_size;
+  bool b = true;
+  if (s->readBytes(&db,1) != 1)
+    return false;
+
+  if (db == 0xcb) {
+    read_size = 8;
+    union double_to_byte {
+      double d;
+      byte b[8];
+    } b2d;
+    b = s->readBytes(&(b2d.b[7]),1) == 1;
+    b = s->readBytes(&(b2d.b[6]),1) == 1;
+    b = s->readBytes(&(b2d.b[5]),1) == 1;
+    b = s->readBytes(&(b2d.b[4]),1) == 1;
+    b = s->readBytes(&(b2d.b[3]),1) == 1;
+    b = s->readBytes(&(b2d.b[2]),1) == 1;
+    b = s->readBytes(&(b2d.b[1]),1) == 1;
+    b = s->readBytes(&(b2d.b[0]),1) == 1;
+    *d = b2d.d;
+    return b;
+  } else {
+    return false;
+  }
+  return false;
+}
+
 bool msgpck_read_string(Stream * s, char * str, uint32_t max_size, uint32_t *str_size) {
   *str_size = 0;
   uint8_t fb;
@@ -579,6 +608,23 @@ void msgpck_write_float(Stream *s, float f) {
   s->write(f2b.b[2]);
   s->write(f2b.b[1]);
   s->write(f2b.b[0]);
+}
+
+void msgpck_write_double(Stream *s, double d) {
+  union double_to_byte {
+    double d;
+    byte b[8];
+  } d2b;
+  d2b.d = d;
+  s->write(0xcb);
+  s->write(d2b.b[7]);
+  s->write(d2b.b[6]);
+  s->write(d2b.b[5]);
+  s->write(d2b.b[4]);
+  s->write(d2b.b[3]);
+  s->write(d2b.b[2]);
+  s->write(d2b.b[1]);
+  s->write(d2b.b[0]);
 }
 
 void msgpck_write_string(Stream * s, char * str, uint32_t str_size) {
